@@ -332,6 +332,30 @@ h3,
     box-shadow: var(--shadow-soft);
 }
 
+/* Ensure linked proof-cards retain original text colors and no underline */
+.proof-grid a[href="#team"] {
+    text-decoration: none;
+    color: inherit; /* Inherit color from parent */
+    display: block; /* Make the anchor fill the card's space */
+}
+
+.proof-grid a[href="#team"] .proof-number {
+    color: var(--ink); /* Specific color for proof-number in light mode */
+}
+
+.proof-grid a[href="#team"] .proof-label {
+    color: var(--muted); /* Specific color for proof-label in light mode */
+}
+
+/* Dark mode specific overrides for linked proof-cards */
+body.theme-dark .proof-grid a[href="#team"] .proof-number {
+    color: var(--ink); /* Dark mode --ink */
+}
+
+body.theme-dark .proof-grid a[href="#team"] .proof-label {
+    color: var(--muted); /* Dark mode --muted */
+}
+
 .proof-number {
     font-family: "Cormorant Garamond", Georgia, serif;
     font-size: clamp(2.1rem, 4vw, 3rem);
@@ -1064,6 +1088,10 @@ body.theme-dark .gallery-item {
 body.theme-dark .footer {
     border-top-color: rgba(255, 255, 255, 0.08);
     background: rgba(19, 17, 25, 0.82);
+}
+
+body.theme-dark img {
+    filter: grayscale(75%);
 }
 
 @media (max-width: 1050px) {

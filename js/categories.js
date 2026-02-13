@@ -1,6 +1,6 @@
 window.FEATURED_HOME_CATEGORIES = [
   {
-    slug: "landscapes",
+    slug: "landscape",
     label: "Landscapes",
     thumbnail: "/images/portfolio/landscape.jpg",
     description: "Wide perspectives, city lines, open skies, and scene depth.",
