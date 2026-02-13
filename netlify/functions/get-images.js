@@ -1,112 +1,141 @@
-const https = require('https');
+const https = require("https");
 
-exports.handler = async function(event, context) {
-  // CORS headers
+function requestJson(url, headers = {}) {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, { headers }, (res) => {
+        let data = "";
+
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+
+        res.on("end", () => {
+          try {
+            const parsed = data ? JSON.parse(data) : {};
+            resolve({ statusCode: res.statusCode || 500, data: parsed });
+          } catch (error) {
+            reject(new Error(`Failed to parse Cloudinary response: ${error.message}`));
+          }
+        });
+      })
+      .on("error", (error) => {
+        reject(error);
+      });
+  });
+}
+
+exports.handler = async function (event) {
   const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Content-Type': 'application/json'
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Content-Type": "application/json",
   };
 
-  // Handle preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers, body: "" };
   }
 
-  // Cloudinary credentials from environment variables
   const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
   const API_KEY = process.env.CLOUDINARY_API_KEY;
   const API_SECRET = process.env.CLOUDINARY_API_SECRET;
+  const FOLDER = (process.env.CLOUDINARY_FOLDER || "PhotographyPortfolio")
+    .trim()
+    .replace(/^\/+|\/+$/g, "");
 
   if (!CLOUD_NAME || !API_KEY || !API_SECRET) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        error: 'Cloudinary credentials not configured. Please set environment variables in Netlify.' 
-      })
+      body: JSON.stringify({
+        error: "Cloudinary credentials not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.",
+      }),
     };
   }
 
-  // Build the Cloudinary API URL
-  const timestamp = Math.floor(Date.now() / 1000);
-  const resourceType = 'image';
-  const maxResults = 500;
-  const prefix = 'PhotographyPortfolio'; // Your folder
+  const auth = Buffer.from(`${API_KEY}:${API_SECRET}`).toString("base64");
 
-  const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/resources/${resourceType}?max_results=${maxResults}&prefix=${prefix}&tags=true`;
+  const prefixCandidates = [];
+  if (FOLDER) {
+    prefixCandidates.push(FOLDER);
+    prefixCandidates.push(`${FOLDER}/`);
+  }
+  // Final fallback: query all uploaded images if folder prefix misses.
+  prefixCandidates.push("");
 
-  // Create basic auth header
-  const auth = Buffer.from(`${API_KEY}:${API_SECRET}`).toString('base64');
+  let cloudinaryData = null;
+  let usedPrefix = "";
 
-  return new Promise((resolve) => {
-    https.get(url, {
-      headers: {
-        'Authorization': `Basic ${auth}`
+  try {
+    for (const prefix of prefixCandidates) {
+      const params = new URLSearchParams({
+        max_results: "500",
+        tags: "true",
+        context: "true",
+      });
+
+      if (prefix) {
+        params.set("prefix", prefix);
       }
-    }, (res) => {
-      let data = '';
 
-      res.on('data', (chunk) => {
-        data += chunk;
+      const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/resources/image/upload?${params.toString()}`;
+      const result = await requestJson(url, {
+        Authorization: `Basic ${auth}`,
       });
 
-      res.on('end', () => {
-        try {
-          const parsedData = JSON.parse(data);
-          
-          if (res.statusCode !== 200) {
-            resolve({
-              statusCode: res.statusCode,
-              headers,
-              body: JSON.stringify({ 
-                error: 'Failed to fetch from Cloudinary',
-                details: parsedData
-              })
-            });
-            return;
-          }
+      if (result.statusCode !== 200) {
+        return {
+          statusCode: result.statusCode,
+          headers,
+          body: JSON.stringify({
+            error: "Failed to fetch from Cloudinary",
+            details: result.data,
+            attemptedPrefix: prefix || "(none)",
+          }),
+        };
+      }
 
-          // Transform Cloudinary response to match your app's format
-          const images = (parsedData.resources || []).map(resource => {
-            // Extract categories from tags
-            const categories = (resource.tags || [])
-              .map(tag => tag.toLowerCase().trim())
-              .filter(tag => ['landscapes', 'nature', 'animal'].includes(tag));
+      const resources = result.data.resources || [];
+      if (resources.length > 0 || !prefix) {
+        cloudinaryData = result.data;
+        usedPrefix = prefix;
+        break;
+      }
+    }
 
-            return {
-              src: `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${resource.public_id}.${resource.format}`,
-              title: resource.context?.custom?.title || resource.public_id.split('/').pop(),
-              categories: categories.length > 0 ? categories : ['landscapes'] // Default to landscapes if no tags
-            };
-          });
+    const images = (cloudinaryData?.resources || []).map((resource) => {
+      const categories = (resource.tags || [])
+        .map((tag) => String(tag).toLowerCase().trim())
+        .filter((tag) => ["landscapes", "nature", "animal"].includes(tag));
 
-          resolve({
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ images })
-          });
-        } catch (error) {
-          resolve({
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ 
-              error: 'Failed to parse Cloudinary response',
-              details: error.message
-            })
-          });
-        }
-      });
-    }).on('error', (error) => {
-      resolve({
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ 
-          error: 'Network error',
-          details: error.message
-        })
-      });
+      return {
+        src: `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${resource.public_id}.${resource.format}`,
+        title:
+          resource.context?.custom?.title ||
+          resource.display_name ||
+          resource.public_id.split("/").pop(),
+        categories,
+      };
     });
-  });
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        images,
+        source: "cloudinary",
+        folderPrefix: usedPrefix,
+      }),
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: "Network or runtime error",
+        details: error.message,
+      }),
+    };
+  }
 };

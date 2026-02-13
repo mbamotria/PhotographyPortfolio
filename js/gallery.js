@@ -147,8 +147,20 @@ class GalleryManager {
           .filter(Boolean);
       }
 
+      let errorDetail = "";
+      try {
+        const errData = await response.json();
+        if (errData?.error) {
+          errorDetail = `${errData.error}${
+            errData.details ? ` | ${JSON.stringify(errData.details)}` : ""
+          }`;
+        }
+      } catch {
+        // Ignore JSON parse failures.
+      }
+
       console.log(
-        `Cloudinary function returned ${response.status}. Falling back to local images.json.`,
+        `Cloudinary function returned ${response.status}. ${errorDetail} Falling back to local images.json.`,
       );
     } catch (error) {
       console.log("Failed to fetch from Cloudinary, trying local images.json...");
