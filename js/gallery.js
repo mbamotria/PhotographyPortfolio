@@ -13,6 +13,9 @@ class GalleryManager {
     this.filtersElement = document.getElementById("category-filters");
     this.categoryDefinitions = [];
     this.activeCategory = this.getCategoryFromUrl();
+    this.touchStartX = 0;
+    this.touchStartY = 0;
+    this.touchStartTime = 0;
     this.init();
   }
 
@@ -65,6 +68,48 @@ class GalleryManager {
     window.addEventListener("popstate", () => {
       this.applyCategoryFilter(this.getCategoryFromUrl(), { updateUrl: false });
     });
+
+    // Swipe support for touch devices (lightbox navigation)
+    this.lightboxElement.addEventListener(
+      "touchstart",
+      (event) => {
+        if (!this.lightboxElement.classList.contains("active")) return;
+        const touch = event.changedTouches[0];
+        if (!touch) return;
+
+        this.touchStartX = touch.clientX;
+        this.touchStartY = touch.clientY;
+        this.touchStartTime = Date.now();
+      },
+      { passive: true },
+    );
+
+    this.lightboxElement.addEventListener(
+      "touchend",
+      (event) => {
+        if (!this.lightboxElement.classList.contains("active")) return;
+        const touch = event.changedTouches[0];
+        if (!touch) return;
+
+        const deltaX = touch.clientX - this.touchStartX;
+        const deltaY = touch.clientY - this.touchStartY;
+        const elapsed = Date.now() - this.touchStartTime;
+
+        const isHorizontalSwipe =
+          Math.abs(deltaX) >= 48 &&
+          Math.abs(deltaY) <= 42 &&
+          elapsed <= 700;
+
+        if (!isHorizontalSwipe) return;
+
+        if (deltaX < 0) {
+          this.navigateImage(1);
+        } else {
+          this.navigateImage(-1);
+        }
+      },
+      { passive: true },
+    );
   }
 
   normalizeCategorySlug(value) {
