@@ -137,8 +137,8 @@ class GalleryManager {
   }
 
   async loadImagesFromFolder() {
+    // Try Netlify function (Cloudinary-backed)
     try {
-      // Try to fetch from Netlify function (Cloudinary)
       const response = await fetch("/.netlify/functions/get-images");
       if (response.ok) {
         const data = await response.json();
@@ -146,21 +146,25 @@ class GalleryManager {
           .map((image, index) => this.normalizeImage(image, index))
           .filter(Boolean);
       }
+
+      console.log(
+        `Cloudinary function returned ${response.status}. Falling back to local images.json.`,
+      );
     } catch (error) {
       console.log("Failed to fetch from Cloudinary, trying local images.json...");
-      
-      // Fallback to local images.json for development
-      try {
-        const localResponse = await fetch("/images/portfolio/images.json");
-        if (localResponse.ok) {
-          const localData = await localResponse.json();
-          return (localData.images || [])
-            .map((image, index) => this.normalizeImage(image, index))
-            .filter(Boolean);
-        }
-      } catch (fallbackError) {
-        console.log("No local images.json found either.");
+    }
+
+    // Fallback to local images.json for development or when Cloudinary fails
+    try {
+      const localResponse = await fetch("/images/portfolio/images.json");
+      if (localResponse.ok) {
+        const localData = await localResponse.json();
+        return (localData.images || [])
+          .map((image, index) => this.normalizeImage(image, index))
+          .filter(Boolean);
       }
+    } catch (fallbackError) {
+      console.log("No local images.json found either.");
     }
 
     return [];
