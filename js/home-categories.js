@@ -14,7 +14,7 @@
   categoryGrid.innerHTML = categories
     .map(
       (category) => `
-        <a class="category-card" href="gallery.html?category=${encodeURIComponent(category.slug)}">
+        <a class="category-card category-${String(category.slug || "").toLowerCase()}" href="gallery.html?category=${encodeURIComponent(category.slug)}">
           <img
             class="category-thumb"
             src="${category.thumbnail}"

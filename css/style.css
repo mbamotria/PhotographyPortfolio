@@ -381,6 +381,19 @@ h3,
     transform: scale(1.06);
 }
 
+.category-card.category-nature .category-thumb,
+.category-card.category-animal .category-thumb {
+    object-position: center 34%;
+}
+
+.category-card.category-landscapes .category-thumb {
+    transform: scale(1.1);
+}
+
+.category-card.category-landscapes:hover .category-thumb {
+    transform: scale(1.15);
+}
+
 .category-content {
     position: absolute;
     left: 0;
