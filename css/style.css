@@ -993,7 +993,8 @@ h3,
 
     .hero-home {
         margin-top: 74px;
-        min-height: auto;
+        min-height: calc(100dvh - 74px);
+        min-height: calc(100svh - 74px);
         padding: 3.2rem 0 2.3rem;
     }
 
@@ -1050,6 +1051,12 @@ h3,
 
     .logo {
         font-size: 1rem;
+    }
+
+    .hero-home {
+        min-height: calc(100dvh - 74px);
+        min-height: calc(100svh - 74px);
+        padding: 2.4rem 0 2rem;
     }
 
     .nav-toggle {
