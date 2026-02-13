@@ -11,7 +11,7 @@ class GalleryManager {
     this.errorElement = document.getElementById("error");
     this.filterSummaryElement = document.getElementById("filter-summary");
     this.filtersElement = document.getElementById("category-filters");
-    this.categoryDefinitions = this.getCategoryDefinitions();
+    this.categoryDefinitions = [];
     this.activeCategory = this.getCategoryFromUrl();
     this.init();
   }
@@ -67,27 +67,6 @@ class GalleryManager {
     });
   }
 
-  getCategoryDefinitions() {
-    const configured = Array.isArray(window.PORTFOLIO_CATEGORIES)
-      ? window.PORTFOLIO_CATEGORIES
-      : [];
-
-    if (configured.length === 0) {
-      return [
-        { slug: "landscapes", label: "Landscapes" },
-        { slug: "nature", label: "Nature" },
-        { slug: "animal", label: "Animal" },
-      ];
-    }
-
-    return configured
-      .map((category) => ({
-        slug: this.normalizeCategorySlug(category.slug),
-        label: category.label || category.slug,
-      }))
-      .filter((category) => category.slug);
-  }
-
   normalizeCategorySlug(value) {
     return String(value || "")
       .trim()
@@ -95,24 +74,62 @@ class GalleryManager {
       .replace(/\s+/g, "-");
   }
 
+  formatCategoryLabel(slug) {
+    return String(slug || "")
+      .split("-")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }
+
+  getFeaturedCategoryLabelMap() {
+    const source = Array.isArray(window.FEATURED_HOME_CATEGORIES)
+      ? window.FEATURED_HOME_CATEGORIES
+      : Array.isArray(window.PORTFOLIO_CATEGORIES)
+        ? window.PORTFOLIO_CATEGORIES
+        : [];
+
+    const map = new Map();
+    source.forEach((category) => {
+      const slug = this.normalizeCategorySlug(category.slug);
+      if (!slug) return;
+      map.set(slug, category.label || this.formatCategoryLabel(slug));
+    });
+    return map;
+  }
+
+  buildCategoryDefinitions(images) {
+    const labelMap = this.getFeaturedCategoryLabelMap();
+    const slugs = new Set();
+
+    images.forEach((image) => {
+      (image.categories || []).forEach((categorySlug) => {
+        const normalized = this.normalizeCategorySlug(categorySlug);
+        if (normalized) {
+          slugs.add(normalized);
+        }
+      });
+    });
+
+    return Array.from(slugs)
+      .sort((a, b) => a.localeCompare(b))
+      .map((slug) => ({
+        slug,
+        label: labelMap.get(slug) || this.formatCategoryLabel(slug),
+      }));
+  }
+
   getCategoryFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const categoryParam = this.normalizeCategorySlug(params.get("category"));
-
-    if (!categoryParam) return "all";
-
-    const exists = this.categoryDefinitions.some(
-      (category) => category.slug === categoryParam,
-    );
-
-    return exists ? categoryParam : "all";
+    return categoryParam || "all";
   }
 
   getCategoryLabel(slug) {
     if (slug === "all") return "All Photos";
 
     const match = this.categoryDefinitions.find((category) => category.slug === slug);
-    return match ? match.label : "All Photos";
+    return match ? match.label : this.formatCategoryLabel(slug);
   }
 
   async loadGallery() {
@@ -127,6 +144,15 @@ class GalleryManager {
       }
 
       this.allImages = images;
+      this.categoryDefinitions = this.buildCategoryDefinitions(images);
+
+      const isKnownCategory = this.categoryDefinitions.some(
+        (category) => category.slug === this.activeCategory,
+      );
+      if (this.activeCategory !== "all" && !isKnownCategory) {
+        this.activeCategory = "all";
+      }
+
       this.renderCategoryFilters();
       this.applyCategoryFilter(this.activeCategory, { updateUrl: false });
       this.hideLoading();

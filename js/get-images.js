@@ -192,9 +192,18 @@ exports.handler = async function (event) {
     }
 
     const images = (selected.resources || []).map((resource) => {
-      const categories = (resource.tags || [])
-        .map((tag) => String(tag).toLowerCase().trim())
-        .filter((tag) => ["landscapes", "nature", "animal"].includes(tag));
+      const categories = Array.from(
+        new Set(
+          (resource.tags || [])
+            .map((tag) =>
+              String(tag || "")
+                .toLowerCase()
+                .trim()
+                .replace(/\s+/g, "-"),
+            )
+            .filter(Boolean),
+        ),
+      );
 
       return {
         src: `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${resource.public_id}.${resource.format}`,

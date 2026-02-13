@@ -1,4 +1,4 @@
-window.PORTFOLIO_CATEGORIES = [
+window.FEATURED_HOME_CATEGORIES = [
   {
     slug: "landscapes",
     label: "Landscapes",
@@ -18,3 +18,6 @@ window.PORTFOLIO_CATEGORIES = [
     description: "Animal portraits and wildlife moments.",
   },
 ];
+
+// Backward compatibility for older scripts.
+window.PORTFOLIO_CATEGORIES = window.FEATURED_HOME_CATEGORIES;
