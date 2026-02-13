@@ -1,0 +1,34 @@
+{
+  "images": [
+    {
+      "src": "/images/portfolio/1.jpg",
+      "title": "Nature Frame 03",
+      "categories": ["nature"]
+    },
+    {
+      "src": "/images/portfolio/2.jpg",
+      "title": "Landscape Frame 03",
+      "categories": ["landscapes"]
+    },
+    {
+      "src": "/images/portfolio/3.jpg",
+      "title": "Landscape Frame 01",
+      "categories": ["landscapes"]
+    },
+    {
+      "src": "/images/portfolio/4.jpg",
+      "title": "Animal Frame 01",
+      "categories": ["animal", "nature"]
+    },
+    {
+      "src": "/images/portfolio/5.jpg",
+      "title": "Nature Frame 02",
+      "categories": ["nature"]
+    },
+    {
+      "src": "/images/portfolio/6.jpg",
+      "title": "Landscape Frame 02",
+      "categories": ["landscapes"]
+    }
+  ]
+}

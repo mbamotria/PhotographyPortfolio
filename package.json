@@ -1,0 +1,16 @@
+{
+  "name": "mbamotria-portfolio",
+  "version": "1.0.0",
+  "description": "Photography portfolio for MBAMotria & Tasnim",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build needed - static site'",
+    "deploy": "netlify deploy --prod"
+  },
+  "keywords": ["photography", "portfolio"],
+  "author": "MBAMotria & Tasnim",
+  "license": "MIT",
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}

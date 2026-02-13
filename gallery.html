@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Full photo archive gallery page"
+        />
+        <title>Portfolio Gallery</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="icon" type="image/svg+xml" href="images/favicon.svg" />
+        <link rel="stylesheet" href="css/style.css" />
+    </head>
+    <body class="gallery-page">
+        <header class="header">
+            <nav class="nav">
+                <a href="index.html#home" class="logo">MBAMotria</a>
+                <button
+                    class="nav-toggle"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="site-nav-links"
+                    aria-label="Toggle navigation"
+                >
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul id="site-nav-links" class="nav-links">
+                    <li><a href="index.html#home">Home</a></li>
+                    <li><a href="#work">Portfolio</a></li>
+                    <li><a href="index.html#about">About</a></li>
+                    <li><a href="index.html#contact">Contact</a></li>
+                </ul>
+                <a class="nav-cta" href="index.html#contact">Contact</a>
+            </nav>
+        </header>
+
+        <main class="gallery-main">
+            <section class="gallery-hero">
+                <div class="container">
+                    <p class="eyebrow">Portfolio</p>
+                    <h1 class="gallery-title">Photo Archive</h1>
+                    <p class="gallery-intro">
+                        Every uploaded image from our journey lives here. Click
+                        any photo for full view.
+                    </p>
+                </div>
+            </section>
+
+            <section class="gallery-filter-shell">
+                <div class="container">
+                    <p id="filter-summary" class="filter-summary">Showing: All Photos</p>
+                    <div id="category-filters" class="category-filters">
+                        <!-- Category filter buttons injected by js/gallery.js -->
+                    </div>
+                </div>
+            </section>
+
+            <section id="work" class="gallery-section">
+                <div class="container">
+                    <div id="gallery-grid" class="gallery-grid">
+                        <!-- Images will be loaded here dynamically -->
+                    </div>
+                    <div id="loading" class="loading">Loading gallery...</div>
+                    <div id="error" class="error" style="display: none">
+                        Unable to load gallery.
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div id="lightbox" class="lightbox">
+            <button class="lightbox-close">&times;</button>
+            <button class="lightbox-prev">&#8249;</button>
+            <button class="lightbox-next">&#8250;</button>
+            <img id="lightbox-img" src="" alt="Full size image" />
+            <div class="lightbox-counter">
+                <span id="current-index">1</span> /
+                <span id="total-images">1</span>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>&copy; 2026 MBAMotria &amp; Tasnim. All rights reserved.</p>
+        </footer>
+
+        <script src="js/categories.js"></script>
+        <script src="js/nav.js"></script>
+        <script src="js/page-transition.js"></script>
+        <script src="js/gallery.js"></script>
+    </body>
+</html>
