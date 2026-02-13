@@ -1090,9 +1090,7 @@ body.theme-dark .footer {
     background: rgba(19, 17, 25, 0.82);
 }
 
-body.theme-dark img {
-    filter: grayscale(75%);
-}
+
 
 @media (max-width: 1050px) {
     .proof-grid,
