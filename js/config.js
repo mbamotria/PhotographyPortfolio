@@ -2,7 +2,7 @@
 
 const CLOUDINARY_CONFIG = {
     // Your Cloudinary cloud name
-    cloudName: 'dmqoqgece',
+    cloudName: 'YOUR_CLOUDINARY_CLOUD_NAME',
     
     // Upload preset name (we'll create this in Cloudinary dashboard)
     uploadPreset: 'portfolio_preset',
