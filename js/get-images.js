@@ -15,7 +15,9 @@ function requestJson(url, headers = {}) {
             const parsed = data ? JSON.parse(data) : {};
             resolve({ statusCode: res.statusCode || 500, data: parsed });
           } catch (error) {
-            reject(new Error(`Failed to parse Cloudinary response: ${error.message}`));
+            reject(
+              new Error(`Failed to parse Cloudinary response: ${error.message}`),
+            );
           }
         });
       })
@@ -23,6 +25,50 @@ function requestJson(url, headers = {}) {
         reject(error);
       });
   });
+}
+
+async function fetchAllResources({
+  cloudName,
+  path,
+  baseParams,
+  authHeader,
+  maxPages = 20,
+}) {
+  const resources = [];
+  let nextCursor = "";
+
+  for (let page = 0; page < maxPages; page += 1) {
+    const params = new URLSearchParams(baseParams);
+    if (nextCursor) {
+      params.set("next_cursor", nextCursor);
+    }
+
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}${path}?${params.toString()}`;
+    const result = await requestJson(url, {
+      Authorization: authHeader,
+    });
+
+    if (result.statusCode !== 200) {
+      return {
+        ok: false,
+        statusCode: result.statusCode,
+        details: result.data,
+      };
+    }
+
+    const pageResources = result.data.resources || [];
+    resources.push(...pageResources);
+
+    nextCursor = result.data.next_cursor || "";
+    if (!nextCursor) {
+      break;
+    }
+  }
+
+  return {
+    ok: true,
+    resources,
+  };
 }
 
 exports.handler = async function (event) {
@@ -40,7 +86,7 @@ exports.handler = async function (event) {
   const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
   const API_KEY = process.env.CLOUDINARY_API_KEY;
   const API_SECRET = process.env.CLOUDINARY_API_SECRET;
-  const FOLDER = (process.env.CLOUDINARY_FOLDER || "PhotographyPortfolio")
+  const FOLDER = (process.env.CLOUDINARY_FOLDER || "")
     .trim()
     .replace(/^\/+|\/+$/g, "");
 
@@ -49,62 +95,103 @@ exports.handler = async function (event) {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: "Cloudinary credentials not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.",
+        error:
+          "Cloudinary credentials not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.",
       }),
     };
   }
 
-  const auth = Buffer.from(`${API_KEY}:${API_SECRET}`).toString("base64");
+  const authHeader = `Basic ${Buffer.from(`${API_KEY}:${API_SECRET}`).toString("base64")}`;
 
-  const prefixCandidates = [];
+  const baseParams = {
+    max_results: "500",
+    tags: "true",
+    context: "true",
+  };
+
+  const strategies = [];
+
   if (FOLDER) {
-    prefixCandidates.push(FOLDER);
-    prefixCandidates.push(`${FOLDER}/`);
-  }
-  // Final fallback: query all uploaded images if folder prefix misses.
-  prefixCandidates.push("");
+    // Dynamic folders: asset_folder in Media Library can differ from public_id prefix.
+    strategies.push({
+      name: "asset_folder",
+      path: "/resources/by_asset_folder",
+      params: {
+        ...baseParams,
+        asset_folder: FOLDER,
+      },
+    });
 
-  let cloudinaryData = null;
-  let usedPrefix = "";
+    // Classic folder mode fallback: public_id prefix usually includes folder path.
+    strategies.push({
+      name: "prefix",
+      path: "/resources/image/upload",
+      params: {
+        ...baseParams,
+        prefix: FOLDER,
+      },
+    });
+
+    strategies.push({
+      name: "prefix_slash",
+      path: "/resources/image/upload",
+      params: {
+        ...baseParams,
+        prefix: `${FOLDER}/`,
+      },
+    });
+  }
+
+  // Final fallback: all images in the cloud.
+  strategies.push({
+    name: "all_uploads",
+    path: "/resources/image/upload",
+    params: baseParams,
+  });
+
+  let selected = null;
+  let lastError = null;
 
   try {
-    for (const prefix of prefixCandidates) {
-      const params = new URLSearchParams({
-        max_results: "500",
-        tags: "true",
-        context: "true",
+    for (const strategy of strategies) {
+      const result = await fetchAllResources({
+        cloudName: CLOUD_NAME,
+        path: strategy.path,
+        baseParams: strategy.params,
+        authHeader,
       });
 
-      if (prefix) {
-        params.set("prefix", prefix);
-      }
-
-      const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/resources/image/upload?${params.toString()}`;
-      const result = await requestJson(url, {
-        Authorization: `Basic ${auth}`,
-      });
-
-      if (result.statusCode !== 200) {
-        return {
+      if (!result.ok) {
+        lastError = {
+          strategy: strategy.name,
           statusCode: result.statusCode,
-          headers,
-          body: JSON.stringify({
-            error: "Failed to fetch from Cloudinary",
-            details: result.data,
-            attemptedPrefix: prefix || "(none)",
-          }),
+          details: result.details,
         };
+        continue;
       }
 
-      const resources = result.data.resources || [];
-      if (resources.length > 0 || !prefix) {
-        cloudinaryData = result.data;
-        usedPrefix = prefix;
+      if (result.resources.length > 0 || strategy.name === "all_uploads") {
+        selected = {
+          strategy: strategy.name,
+          resources: result.resources,
+        };
         break;
       }
     }
 
-    const images = (cloudinaryData?.resources || []).map((resource) => {
+    if (!selected) {
+      return {
+        statusCode: lastError?.statusCode || 500,
+        headers,
+        body: JSON.stringify({
+          error: "Failed to fetch from Cloudinary",
+          details: lastError?.details || "No successful query strategy.",
+          strategy: lastError?.strategy || "unknown",
+        }),
+      };
+    }
+
+    const images = (selected.resources || []).map((resource) => {
       const categories = (resource.tags || [])
         .map((tag) => String(tag).toLowerCase().trim())
         .filter((tag) => ["landscapes", "nature", "animal"].includes(tag));
@@ -125,7 +212,8 @@ exports.handler = async function (event) {
       body: JSON.stringify({
         images,
         source: "cloudinary",
-        folderPrefix: usedPrefix,
+        strategy: selected.strategy,
+        folder: FOLDER || "(none)",
       }),
     };
   } catch (error) {
